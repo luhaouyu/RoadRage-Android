@@ -2,6 +2,19 @@
 #include <string>
 
 #include "common/options.h"
+#include "xdk/hle.h"
+
+#if HAS_OutputDebugStringA
+// XDK 4034 OutputDebugStringA uses int 0x2D followed by an int3 skip byte.
+HLE_STDCALL(OutputDebugStringA, 1) {
+    if (a[0]) {
+        std::string s = kernel::ReadCString(a[0]);
+        while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+        if (!s.empty()) LOGI("dbg: %s", s.c_str());
+    }
+    return 0;
+}
+#endif
 
 namespace game {
 

@@ -16,7 +16,11 @@ X86Func* Find(uint32_t guest);
 // exports with a host version
 static bool Handled(uint32_t va) {
     static const uint32_t handled[] = {
-        SYM(DirectSoundCreate), SYM(IDirectSound_Release), SYM(DirectSoundUseFullHRTF), SYM(DirectSoundUseLightHRTF),
+        SYM(DirectSoundCreate), SYM(IDirectSound_Release),
+#if HAS_IDirectSound_AddRef
+        SYM(IDirectSound_AddRef),
+#endif
+        SYM(DirectSoundUseFullHRTF), SYM(DirectSoundUseLightHRTF),
         SYM(IDirectSound_GetSpeakerConfig), SYM(IDirectSound_SetEffectData), SYM(IDirectSound_EnableHeadphones),
         SYM(IDirectSound_SetMixBinHeadroom), SYM(IDirectSound_CommitDeferredSettings),
         SYM(IDirectSound_SetDopplerFactor), SYM(IDirectSound_SetRolloffFactor), SYM(IDirectSound_SetDistanceFactor),
@@ -91,6 +95,9 @@ HLE_STDCALL(DirectSoundCreate, 3) {
     return 0;
 }
 HLE_STDCALL(IDirectSound_Release, 1) { return 0; }
+#if HAS_IDirectSound_AddRef
+HLE_STDCALL(IDirectSound_AddRef, 1) { return 1; }
+#endif
 HLE_STDCALL(DirectSoundUseFullHRTF, 0) { return 0; }
 HLE_STDCALL(DirectSoundUseLightHRTF, 0) { return 0; }
 // DSSPEAKER as the library keeps it (0x4CDB34 in Double Agent): the dashboard's XC_AUDIO_FLAGS

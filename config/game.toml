@@ -21,9 +21,12 @@ D3DDevice_SetRenderState_ZBias                       = 0x15A520
 D3DDevice_IsBusy                                     = 0x15C600
 D3DDevice_Reset                                      = 0x15B700
 # DSOUND 3936 extra exports
+IDirectSound_AddRef                                  = 0x17B2B2
 IDirectSoundBuffer_SetConeAngles                     = 0x17BEE2
 IDirectSoundBuffer_SetConeOrientation                = 0x17BF06
 IDirectSoundBuffer_SetConeOutsideVolume              = 0x17BF3B
+# XAPILIB debug print (uses int 0x2d + int3 skip slot)
+OutputDebugStringA                                   = 0x137BD0
 # Standard SDK symbol table
 accept                                               = 0
 bind                                                 = 0
