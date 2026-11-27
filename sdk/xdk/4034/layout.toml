@@ -1,0 +1,52 @@
+# XDK 4034 library data layouts the runtime reads or writes.
+# Each offset is verified directly from The Simpsons: Road Rage (USA) default.xbe (XDK 4034, DSOUND 3936).
+[layout]
+# D3D8 CDevice (at 0x00175A50, pointed to by D3D_pDevice 0x001786B0); miniport is at +0x23E8
+CDevice_Push              = 0x0     # D3DDevice_SetTexture 0x15C3B2 reads [edi]
+CDevice_PushThreshold     = 0x4     # D3DDevice_SetTexture 0x15C3B4 compares with [edi + 4]
+CDevice_Flags             = 0x8     # Direct3D_CreateDevice 0x158F4F ors BehaviorFlags & 0x10 into [0x175A58]
+CDevice_BaseVertex        = 0x1C    # D3DDevice_SetIndices 0x15C5C9 stores BaseVertexIndex
+CDevice_Time              = 0x30    # D3D_SetFence 0x15DF7A reads [esi + 0x30]; D3D_KickOffAndWaitForIdle 0x15E315
+CDevice_PixelShader       = 0x4E8   # D3DDevice_SetPixelShader 0x16747E reads/stores [ebx + 0x4E8]
+CDevice_VertexShader      = 0x4F8   # D3DDevice_SetVertexShader 0x15D791 reads/stores [esi + 0x4F8]
+CDevice_IndexBuffer       = 0x504   # D3DDevice_SetIndices 0x15C59A reads/stores [esi + 0x504]
+CDevice_ZScale            = 0x5C4   # D3D_UpdateProjectionViewportTransform 0x15A146 multiplies Z range by [edx + 0x5C4]
+CDevice_SuperSampleX      = 0x5CC   # D3D_UpdateProjectionViewportTransform 0x15A0F6 scales viewport W by [edx + 0x5CC]
+CDevice_SuperSampleY      = 0x5D0   # D3D_UpdateProjectionViewportTransform 0x15A11C scales viewport H by [edx + 0x5D0]
+CDevice_BackBufferScale   = 0x5DC   # D3DDevice_SetRenderTarget 0x15B7F9 reads X at +0x5DC, Y at +0x5E0
+CDevice_Transforms        = 0x8D0   # D3DDevice_SetTransform 0x15B346 copies 16 dwords to [ebx + type*64 + 0x8D0]
+CDevice_Viewport          = 0xB50   # D3DDevice_GetViewport 0x15B47B copies 6 dwords from [eax + 0xB50]
+CDevice_ScreenSpaceOffset = 0xB68   # D3DDevice_SetScreenSpaceOffset 0x15C943 stores X at +0xB68, Y at +0xB6C
+CDevice_Textures          = 0xBF8   # D3DDevice_SetTexture 0x15C370 reads/stores [edi + stage*4 + 0xBF8]
+CDevice_Palettes          = 0xC08   # D3DDevice_SetPalette 0x15C4ED reads/stores [esi + stage*4 + 0xC08]
+CDevice_RenderTarget      = 0x21F0  # D3DDevice_SetRenderTarget 0x15B7C5, D3DDevice_Clear 0x15C9C3
+CDevice_Depth             = 0x21F4  # D3DDevice_Clear 0x15C9BB reads [ebp + 0x21F4]
+CDevice_BackBuffer        = 0x21FC  # D3DDevice_GetBackBuffer 0x15BC5D returns [ecx + 0x21FC] for index 0
+CDevice_FrontBuffer       = 0x2200  # D3DDevice_GetBackBuffer 0x15BC4F returns [ecx + 0x2200] for index -1
+CDevice_AutoDepth         = 0x2208  # CDevice_InitializeFrameBuffers 0x159520 stores it; D3D_InitDefaultState 0x159248 reads it
+CDevice_VBlankCallback    = 0x25AC  # miniport + 0x1C4: vblank handler 0x160012 calls [esi + 0x1C4]
+CDevice_VBlankEvent       = 0x25B0  # miniport + 0x1C8: D3DDevice_BlockUntilVerticalBlank 0x15B627 waits on +0x25B0
+CDevice_DisplayFlags      = 0x25D0  # miniport + 0x1E8
+CDevice_VBlankCount       = 0x25DC  # miniport + 0x1F4: vblank handler 0x16001E reads [esi + 0x1F4]
+CDevice_Field             = 0x25EC  # miniport + 0x204
+CDevice_GammaRamps        = 0x25F8  # miniport + 0x210: D3DDevice_SetGammaRamp 0x15B220 copies to [edx + index*0x300 + 0x210]
+CDevice_GammaPending      = 0x2C00  # miniport + 0x818: D3DDevice_SetGammaRamp 0x15B236 writes index to [edx + 0x818]
+CDevice_SwapCount         = 0x2C38  # D3DDevice_Swap 0x165319 increments and 0x165350 returns [esi + 0x2C38]
+CDevice_Size              = 0x2C60  # 0x1786B0 (D3D_pDevice) - 0x175A50 (D3D_Device)
+# D3D8 globals
+DirtyFlags_Texture        = 0x4800  # D3DDevice_SetTexture 0x15C3E5 ors 0x4800 into D3D_DirtyFlags (0x1788B8)
+TextureState_Stage        = 32      # D3DDevice_SetTextureStageStateNotInline 0x15A99B: [stage * 32 + type] dwords
+Stream_Size               = 12      # D3DDevice_SetStreamSource 0x15D3FA indexes stream table by n * 12
+Stream_Stride             = 0x0     # D3DDevice_SetStreamSource 0x15D442 stores Stride at +0
+Stream_Buffer             = 0x8     # D3DDevice_SetStreamSource 0x15D448 stores vertex buffer at +8
+PixelShader_Definition    = 0x8     # D3DDevice_CreatePixelShader 0x167441 stores def ptr at +8, SetPixelShader 0x1674EB reads it
+# DSOUND (XDK 3936)
+CDirectSoundStream_Vtable  = 0x0
+CDirectSoundStream_Vtable2 = 0x4
+EffectsImage_Skip0         = 0x804  # DSound effects 0x17E155 reads [ebx + 0x804]
+EffectsImage_Skip1         = 0x80C  # DSound effects 0x17E167 reads [ebx + 0x80C]
+EffectsImage_Desc          = 0x818  # DSound effects 0x17E185 reads [ebx + 0x818]
+# XAPI XPP device type record
+XPP_Current                = 0x0    # XGetDevices 0x1B0F8C reads [edx]
+XPP_Changed                = 0x4    # XGetDevices 0x1B0F8E clears [edx + 4]
+XPP_Previous               = 0x8    # XGetDevices 0x1B0F94 writes [edx + 8]
