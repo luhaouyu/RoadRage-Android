@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Road Rage</string>
-    <string name="port_credit">Port by Rangga Casper</string>
-    <string name="donate">Donate</string>
-    <string name="donate_url">https://sociabuzz.com/racas/tribe</string>
-    <string name="credits">Credits</string>
+    <string name="port_credit">The Simpsons: Road Rage — Android Port</string>
+    <string name="donate">Support</string>
+    <string name="donate_url">https://github.com/luhaouyu/RoadRage-Android</string>
+    <string name="credits">About</string>
     <string name="github">GitHub</string>
-    <string name="youtube">YouTube</string>
-    <string name="github_url">https://github.com/RanggaCasper</string>
-    <string name="youtube_url">https://youtube.com/c/@RanggaCasper</string>
+    <string name="youtube">Releases</string>
+    <string name="github_url">https://github.com/luhaouyu/RoadRage-Android</string>
+    <string name="youtube_url">https://github.com/luhaouyu/RoadRage-Android/releases</string>
 </resources>

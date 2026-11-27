@@ -448,50 +448,42 @@ enum class Role : uint8_t { None, Stick, Look, Button, Cursor, Drag, Pinch, Menu
 // the host. Where it sits is the layout's, which the player edits and picks presets for
 enum : int { kGyro = -2, kPanel = -1, kAnalogA = 0, kAnalogB = 1, kAnalogX = 2, kAnalogY = 3, kAnalogLT = 6, kAnalogRT = 7 };
 constexpr int kBit = 8;  // kBit + n: buttons bit n (dpad up down left right, start, back, left thumb, right thumb)
-enum class Icon : uint8_t { Text, Pause, Gear, Back, Gyro, Up, Down, Left, Right, Camera };
+enum class Icon : uint8_t { Text, Pause, Menu, Back, Gyro, Up, Down, Left, Right, Camera };
 // Play while the player has the controls, Game outside the menus (cutscenes too), Menus in the menus and options
 enum class When : uint8_t { Play, Menus, Game };
-// how a control is drawn and touched: a circle, a shoulder's tab, a small pill, the dpad's rounded square. Its place's
-// r is a circle's radius, a tab's or a pill's half height
-enum class Shape : uint8_t { Round, Tab, Pill, Square };
+// control visuals: circle, shoulder tab, capsule pill, rounded square, or ergonomic driving pedal
+enum class Shape : uint8_t { Round, Tab, Pill, Square, Pedal };
 struct Button {
     const char* id;     // its key in layout.toml
-    const char* label;  // in the layout editor
-    const char* ps2;    // the PS2's name of it, shown with the PS2's buttons; nullptr for the same
+    const char* label;  // displayed text and editor name
+    const char* ps2;    // PS2 button name when PS2 icons are on; nullptr for the same
     Icon icon;
     int press;
     When when;
     Shape shape = Shape::Round;
-    const char* caption = nullptr;  // what it does in the game, under a face button
-    bool look = false;  // a drag from it turns the view as well, as a fire button does
+    const char* caption = nullptr;  // sub-label inside pedals (e.g. GAS / BRAKE)
+    bool look = false;  // a drag from it turns the view as well
     bool keep = false;  // never hidden: the way back out of the menus
-    bool rt = false;    // RT held with it: a special, one touch for the trigger and a face button
+    bool rt = false;    // RT held with it
 };
-// the layout is set in the settings panel (TOUCH CONTROLS): its preset, opacity, size, and the editor that moves the
-// controls, see the functions at the end. A Text control shows its label.
+// Road Rage Xbox controller mapping: face buttons, bumpers, gas/brake pedals, menu, dpad, and camera
 constexpr Button kButtons[] = {
-    {"a", "A", "CROSS", Icon::Text, kAnalogA, When::Game, Shape::Round, "JUMP"},
-    {"b", "B", "CIRCLE", Icon::Text, kAnalogB, When::Game, Shape::Round, "POWER"},
-    {"x", "X", "SQUARE", Icon::Text, kAnalogX, When::Game, Shape::Round, "QUICK"},
-    {"y", "Y", "TRIANGLE", Icon::Text, kAnalogY, When::Game, Shape::Round, "LAUNCH"},
-    {"black", "BLACK", "R2", Icon::Text, 4, When::Game, Shape::Tab},
-    {"white", "WHITE", "L2", Icon::Text, 5, When::Game, Shape::Tab},
-    {"lt", "LT", "L1", Icon::Text, kAnalogLT, When::Game, Shape::Tab},
-    {"rt", "RT", "R1", Icon::Text, kAnalogRT, When::Game, Shape::Tab},
+    {"a", "A", "CROSS", Icon::Text, kAnalogA, When::Game, Shape::Round},
+    {"b", "B", "CIRCLE", Icon::Text, kAnalogB, When::Game, Shape::Round},
+    {"x", "X", "SQUARE", Icon::Text, kAnalogX, When::Game, Shape::Round},
+    {"y", "Y", "TRIANGLE", Icon::Text, kAnalogY, When::Game, Shape::Round},
+    {"black", "BLK", "R2", Icon::Text, 4, When::Game, Shape::Pill},
+    {"white", "WHT", "L2", Icon::Text, 5, When::Game, Shape::Pill},
+    {"lt", "LT", "L1", Icon::Text, kAnalogLT, When::Game, Shape::Pedal, "BRAKE"},
+    {"rt", "RT", "R1", Icon::Text, kAnalogRT, When::Game, Shape::Pedal, "GAS"},
     {"start", "START", nullptr, Icon::Text, kBit + 4, When::Game, Shape::Pill},
     {"back", "BACK", "SELECT", Icon::Text, kBit + 5, When::Game, Shape::Pill},
-    {"panel", "Settings", nullptr, Icon::Gear, kPanel, When::Game, Shape::Round, nullptr, false, true},
+    {"panel", "MENU", nullptr, Icon::Menu, kPanel, When::Game, Shape::Square, nullptr, false, true},
     {"dpad_up", "Up", nullptr, Icon::Up, kBit + 0, When::Game, Shape::Square},
     {"dpad_down", "Down", nullptr, Icon::Down, kBit + 1, When::Game, Shape::Square},
     {"dpad_left", "Left", nullptr, Icon::Left, kBit + 2, When::Game, Shape::Square},
     {"dpad_right", "Right", nullptr, Icon::Right, kBit + 3, When::Game, Shape::Square},
-    // the right stick's click, which turns the camera to behind the player
-    {"camera", "Camera", nullptr, Icon::Camera, kBit + 7, When::Game, Shape::Round},
-    // the specials, RT with X, Y, A or B; hidden in the presets but the RPG one, shown from the layout editor
-    {"special1", "1", nullptr, Icon::Text, kAnalogX, When::Game, Shape::Round, "SPECIAL", false, false, true},
-    {"special2", "2", nullptr, Icon::Text, kAnalogY, When::Game, Shape::Round, "SPECIAL", false, false, true},
-    {"special3", "3", nullptr, Icon::Text, kAnalogA, When::Game, Shape::Round, "SPECIAL", false, false, true},
-    {"special4", "4", nullptr, Icon::Text, kAnalogB, When::Game, Shape::Round, "SPECIAL", false, false, true},
+    {"camera", "CAM", nullptr, Icon::Camera, kBit + 7, When::Game, Shape::Round},
 };
 constexpr size_t kButtonCount = std::size(kButtons);
 constexpr size_t kStick = kButtonCount;  // the sticks' places, after the buttons'
@@ -500,8 +492,7 @@ constexpr size_t kPlaces = kButtonCount + 2;
 bool IsStick(size_t i) { return i >= kStick; }
 const char* PlaceId(size_t i) { return i == kStick ? "stick" : i == kRStick ? "rstick" : kButtons[i].id; }
 
-// a control the layout may hide: a button but the settings gear, the way back out of the menus, and the right stick
-// (its drags then turn nothing); the left stick stays, moved where the player likes
+// a control the layout may hide: any control except the menu button and the left steering stick
 bool Hideable(int i) {
     if (i < 0) return false;
     return size_t(i) == kRStick || (!IsStick(size_t(i)) && !kButtons[size_t(i)].keep);
@@ -513,88 +504,69 @@ struct Place {
     bool hidden = false;
 };
 using Layout = std::array<Place, kPlaces>;
-// The presets. Each lists the places of a b x y, black white, lt rt, start back, the settings, the dpad's up down left
-// right, the camera, the specials 1 to 4, the left stick and the right stick.
-// L2 over L1 and R2 over R1 in the top corners (White and Black are the L2 and R2), the dpad and the face buttons
-// halfway down the sides, a stick under each, Select and Start at the bottom and the settings at the top in the middle
-constexpr Layout kStandard = {{
-    {0.885f, 0.62f, 0.062f}, {0.945f, 0.47f, 0.062f}, {0.825f, 0.47f, 0.062f}, {0.885f, 0.32f, 0.062f},
-    {0.925f, 0.075f, 0.045f}, {0.075f, 0.075f, 0.045f},
-    {0.075f, 0.19f, 0.045f}, {0.925f, 0.19f, 0.045f},
-    {0.565f, 0.92f, 0.035f}, {0.435f, 0.92f, 0.035f}, {0.50f, 0.075f, 0.045f},
-    {0.115f, 0.36f, 0.05f}, {0.115f, 0.58f, 0.05f}, {0.065f, 0.47f, 0.05f}, {0.165f, 0.47f, 0.05f},
-    {0.74f, 0.32f, 0.045f},
-    {0.66f, 0.30f, 0.05f, true}, {0.66f, 0.47f, 0.05f, true}, {0.66f, 0.64f, 0.05f, true}, {0.73f, 0.20f, 0.05f, true},
-    {0.26f, 0.78f, 0.12f}, {0.74f, 0.78f, 0.12f},
+// Presets list: a b x y, black white, lt rt, start back, menu, dpad up down left right, camera, left stick, right stick.
+// ARCADE DRIVE (default): top-center stays clear for the 3D GPS arrow, big GAS/BRAKE pedals bottom-right, steering stick bottom-left
+constexpr Layout kArcadeDrive = {{
+    {0.885f, 0.55f, 0.056f}, {0.945f, 0.41f, 0.056f}, {0.805f, 0.45f, 0.056f}, {0.865f, 0.30f, 0.056f},
+    {0.835f, 0.09f, 0.036f}, {0.165f, 0.09f, 0.036f},
+    {0.775f, 0.81f, 0.072f}, {0.905f, 0.77f, 0.082f},
+    {0.70f, 0.085f, 0.032f}, {0.30f, 0.085f, 0.032f}, {0.055f, 0.09f, 0.044f},
+    {0.105f, 0.255f, 0.040f}, {0.105f, 0.445f, 0.040f}, {0.052f, 0.35f, 0.040f}, {0.158f, 0.35f, 0.040f},
+    {0.945f, 0.09f, 0.042f},
+    {0.175f, 0.74f, 0.135f}, {0.65f, 0.78f, 0.105f, true},
 }};
-// the shoulders as a row of tabs along the top, Back, the settings and Start between them, a small dpad under the
-// left tabs, the face buttons low under the right thumb
-constexpr Layout kTopBar = {{
-    {0.865f, 0.80f, 0.068f}, {0.945f, 0.62f, 0.068f}, {0.785f, 0.62f, 0.068f}, {0.865f, 0.44f, 0.068f},
-    {0.19f, 0.085f, 0.048f}, {0.81f, 0.085f, 0.048f},
-    {0.068f, 0.085f, 0.048f}, {0.932f, 0.085f, 0.048f},
-    {0.585f, 0.075f, 0.036f}, {0.415f, 0.075f, 0.036f}, {0.50f, 0.075f, 0.045f},
-    {0.10f, 0.25f, 0.042f}, {0.10f, 0.43f, 0.042f}, {0.06f, 0.34f, 0.042f}, {0.14f, 0.34f, 0.042f},
-    {0.70f, 0.44f, 0.045f},
-    {0.66f, 0.30f, 0.05f, true}, {0.66f, 0.47f, 0.05f, true}, {0.66f, 0.64f, 0.05f, true}, {0.73f, 0.20f, 0.05f, true},
-    {0.15f, 0.74f, 0.13f}, {0.62f, 0.80f, 0.11f},
+// PEDAL PRO: split-hand racing with BRAKE on the left above the steering stick and a big GAS pedal on the right
+constexpr Layout kPedalPro = {{
+    {0.77f, 0.77f, 0.058f}, {0.915f, 0.48f, 0.058f}, {0.79f, 0.56f, 0.058f}, {0.855f, 0.34f, 0.058f},
+    {0.835f, 0.09f, 0.036f}, {0.165f, 0.09f, 0.036f},
+    {0.095f, 0.44f, 0.074f}, {0.90f, 0.75f, 0.086f},
+    {0.70f, 0.085f, 0.032f}, {0.30f, 0.085f, 0.032f}, {0.055f, 0.09f, 0.044f},
+    {0.245f, 0.26f, 0.036f}, {0.245f, 0.42f, 0.036f}, {0.198f, 0.34f, 0.036f}, {0.292f, 0.34f, 0.036f},
+    {0.945f, 0.09f, 0.042f},
+    {0.175f, 0.76f, 0.135f}, {0.64f, 0.78f, 0.10f, true},
 }};
-// the standard's smaller and lower, the middle of the screen left clear
+// CLASSIC PAD: full dual-stick console controller layout with top-corner triggers and classic face diamond
+constexpr Layout kClassicPad = {{
+    {0.88f, 0.65f, 0.060f}, {0.945f, 0.50f, 0.060f}, {0.815f, 0.50f, 0.060f}, {0.88f, 0.35f, 0.060f},
+    {0.805f, 0.11f, 0.038f}, {0.195f, 0.11f, 0.038f},
+    {0.08f, 0.12f, 0.052f}, {0.92f, 0.12f, 0.052f},
+    {0.57f, 0.91f, 0.033f}, {0.43f, 0.91f, 0.033f}, {0.315f, 0.09f, 0.042f},
+    {0.11f, 0.35f, 0.046f}, {0.11f, 0.57f, 0.046f}, {0.055f, 0.46f, 0.046f}, {0.165f, 0.46f, 0.046f},
+    {0.685f, 0.09f, 0.042f},
+    {0.25f, 0.77f, 0.125f}, {0.73f, 0.77f, 0.115f},
+}};
+// COMPACT: smaller controls pushed to the corners for maximum Springfield visibility
 constexpr Layout kCompact = {{
-    {0.90f, 0.78f, 0.052f}, {0.954f, 0.66f, 0.052f}, {0.846f, 0.66f, 0.052f}, {0.90f, 0.54f, 0.052f},
-    {0.93f, 0.07f, 0.038f}, {0.07f, 0.07f, 0.038f},
-    {0.07f, 0.17f, 0.038f}, {0.93f, 0.17f, 0.038f},
-    {0.555f, 0.93f, 0.03f}, {0.445f, 0.93f, 0.03f}, {0.50f, 0.07f, 0.04f},
-    {0.10f, 0.525f, 0.043f}, {0.10f, 0.715f, 0.043f}, {0.057f, 0.62f, 0.043f}, {0.143f, 0.62f, 0.043f},
-    {0.78f, 0.54f, 0.038f},
-    {0.66f, 0.30f, 0.05f, true}, {0.66f, 0.47f, 0.05f, true}, {0.66f, 0.64f, 0.05f, true}, {0.73f, 0.20f, 0.05f, true},
-    {0.25f, 0.80f, 0.11f}, {0.72f, 0.80f, 0.11f},
+    {0.895f, 0.63f, 0.046f}, {0.95f, 0.52f, 0.046f}, {0.84f, 0.52f, 0.046f}, {0.895f, 0.41f, 0.046f},
+    {0.865f, 0.075f, 0.030f}, {0.135f, 0.075f, 0.030f},
+    {0.79f, 0.84f, 0.056f}, {0.91f, 0.82f, 0.064f},
+    {0.555f, 0.935f, 0.028f}, {0.445f, 0.935f, 0.028f}, {0.048f, 0.075f, 0.038f},
+    {0.095f, 0.37f, 0.035f}, {0.095f, 0.53f, 0.035f}, {0.052f, 0.45f, 0.035f}, {0.138f, 0.45f, 0.035f},
+    {0.952f, 0.075f, 0.036f},
+    {0.15f, 0.79f, 0.11f}, {0.67f, 0.82f, 0.095f},
 }};
-// the shoulders beside the dpad and the face buttons, for thumbs alone with no fingers on the top
-constexpr Layout kLowShoulders = {{
-    {0.885f, 0.62f, 0.062f}, {0.945f, 0.47f, 0.062f}, {0.825f, 0.47f, 0.062f}, {0.885f, 0.32f, 0.062f},
-    {0.73f, 0.32f, 0.045f}, {0.27f, 0.36f, 0.045f},
-    {0.27f, 0.50f, 0.045f}, {0.73f, 0.46f, 0.045f},
-    {0.565f, 0.92f, 0.035f}, {0.435f, 0.92f, 0.035f}, {0.50f, 0.075f, 0.045f},
-    {0.115f, 0.36f, 0.05f}, {0.115f, 0.58f, 0.05f}, {0.065f, 0.47f, 0.05f}, {0.165f, 0.47f, 0.05f},
-    {0.80f, 0.17f, 0.045f},
-    {0.66f, 0.30f, 0.05f, true}, {0.66f, 0.47f, 0.05f, true}, {0.66f, 0.64f, 0.05f, true}, {0.73f, 0.20f, 0.05f, true},
-    {0.26f, 0.78f, 0.12f}, {0.74f, 0.78f, 0.12f},
-}};
-// the standard's bigger, for a tablet or big thumbs
-constexpr Layout kLarge = {{
-    {0.875f, 0.70f, 0.075f}, {0.952f, 0.53f, 0.075f}, {0.798f, 0.53f, 0.075f}, {0.875f, 0.36f, 0.075f},
-    {0.92f, 0.08f, 0.052f}, {0.08f, 0.08f, 0.052f},
-    {0.08f, 0.215f, 0.052f}, {0.92f, 0.215f, 0.052f},
-    {0.57f, 0.92f, 0.04f}, {0.43f, 0.92f, 0.04f}, {0.50f, 0.08f, 0.05f},
-    {0.12f, 0.375f, 0.058f}, {0.12f, 0.625f, 0.058f}, {0.064f, 0.50f, 0.058f}, {0.176f, 0.50f, 0.058f},
-    {0.72f, 0.36f, 0.05f},
-    {0.66f, 0.30f, 0.05f, true}, {0.66f, 0.47f, 0.05f, true}, {0.66f, 0.64f, 0.05f, true}, {0.73f, 0.20f, 0.05f, true},
-    {0.28f, 0.80f, 0.13f}, {0.70f, 0.80f, 0.13f},
-}};
-// as a mobile action RPG: a big attack button in the bottom right corner, Power, Launch and Jump close around it and
-// the four specials in a wider arc, the shoulders along the top, a small dpad under the left ones
-constexpr Layout kRpg = {{
-    {0.927f, 0.506f, 0.065f}, {0.763f, 0.76f, 0.065f}, {0.885f, 0.76f, 0.105f}, {0.815f, 0.539f, 0.065f},
-    {0.81f, 0.085f, 0.048f}, {0.19f, 0.085f, 0.048f},
-    {0.068f, 0.085f, 0.048f}, {0.932f, 0.085f, 0.048f},
-    {0.585f, 0.075f, 0.036f}, {0.415f, 0.075f, 0.036f}, {0.50f, 0.075f, 0.045f},
-    {0.10f, 0.25f, 0.042f}, {0.10f, 0.43f, 0.042f}, {0.06f, 0.34f, 0.042f}, {0.14f, 0.34f, 0.042f},
-    {0.955f, 0.27f, 0.04f},
-    {0.673f, 0.76f, 0.055f}, {0.702f, 0.525f, 0.055f}, {0.779f, 0.353f, 0.055f}, {0.878f, 0.29f, 0.055f},
-    {0.15f, 0.74f, 0.13f}, {0.55f, 0.75f, 0.10f},
+// CLAW 4-FINGER: large top-corner triggers for index fingers, lower thumbs on stick and big face buttons
+constexpr Layout kClaw = {{
+    {0.87f, 0.77f, 0.066f}, {0.945f, 0.61f, 0.066f}, {0.795f, 0.61f, 0.066f}, {0.87f, 0.45f, 0.066f},
+    {0.785f, 0.12f, 0.040f}, {0.215f, 0.12f, 0.040f},
+    {0.085f, 0.14f, 0.066f}, {0.915f, 0.14f, 0.066f},
+    {0.57f, 0.92f, 0.033f}, {0.43f, 0.92f, 0.033f}, {0.33f, 0.09f, 0.040f},
+    {0.10f, 0.34f, 0.038f}, {0.10f, 0.50f, 0.038f}, {0.052f, 0.42f, 0.038f}, {0.148f, 0.42f, 0.038f},
+    {0.67f, 0.09f, 0.040f},
+    {0.165f, 0.74f, 0.135f}, {0.66f, 0.78f, 0.105f, true},
 }};
 struct Preset {
     const char* id;
     const char* label;
     const Layout* places;
 };
-constexpr Preset kPresets[] = {{"default", "STANDARD", &kStandard},
-                               {"top_bar", "TOP BAR", &kTopBar},
-                               {"compact", "COMPACT", &kCompact},
-                               {"low_shoulders", "LOW SHOULDERS", &kLowShoulders},
-                               {"large", "LARGE", &kLarge},
-                               {"rpg", "RPG", &kRpg}};
+constexpr Preset kPresets[] = {
+    {"arcade", "ARCADE DRIVE", &kArcadeDrive},
+    {"pedal_pro", "PEDAL PRO", &kPedalPro},
+    {"classic", "CLASSIC PAD", &kClassicPad},
+    {"compact", "COMPACT", &kCompact},
+    {"claw", "CLAW 4-FINGER", &kClaw},
+};
 
 constexpr float kStickZone = 0.42f;    // share of the width from the left a touch takes the stick in
 constexpr float kFixedReach = 1.5f;    // FIXED sticks: their radii from the centre a touch takes them in
@@ -634,7 +606,7 @@ std::atomic<uint64_t> g_back_until{0};  // the back key's tap of Start or B last
 constexpr uint64_t kBackTapMs = 120;
 
 // the layout in use, under g_lock
-Layout g_layout = kStandard;
+Layout g_layout = kArcadeDrive;
 size_t g_preset = 0;
 float g_opacity = 0.85f;
 float g_scale = 1.0f;  // every control's size, on top of its own
@@ -644,7 +616,7 @@ bool g_fixed_sticks = false;
 bool g_loaded = false;
 // the editor: the layout before it opened (for Cancel), the control picked
 std::atomic<bool> g_editing{false};
-Layout g_before = kStandard;
+Layout g_before = kArcadeDrive;
 float g_before_opacity = 0.85f;
 size_t g_before_preset = 0;
 int g_selected = -1;
@@ -661,14 +633,14 @@ float Height() {
 }
 
 std::filesystem::path LayoutFile() { return app::ExeDir() / "layout.toml"; }
-// the presets' places changed: a layout saved before keeps its opacity and size but not its places
-constexpr int64_t kLayoutVersion = 3;
+// bumped for Road Rage presets: older saved layouts keep opacity/scale and switch to the new default places
+constexpr int64_t kLayoutVersion = 4;
 
 void LoadLayout() {
     g_loaded = true;
     try {
         toml::table t = toml::parse_file(LayoutFile().string());
-        std::string preset = t["preset"].value_or(std::string("default"));
+        std::string preset = t["preset"].value_or(std::string("arcade"));
         for (size_t i = 0; i < std::size(kPresets); i++)
             if (preset == kPresets[i].id) g_preset = i;
         g_layout = *kPresets[g_preset].places;
@@ -750,19 +722,18 @@ void Centre(size_t i, float& cx, float& cy) {
 float Radius(size_t i) { return g_layout[i].r * g_scale * Height(); }
 
 // a control's half width and half height, pixels
-constexpr float kTabAspect = 2.3f, kPillAspect = 2.1f;
+constexpr float kTabAspect = 2.2f, kPillAspect = 1.95f, kPedalAspect = 1.08f;
 void Extent(size_t i, float& hw, float& hh) {
     hh = Radius(i);
     Shape s = i < kButtonCount ? kButtons[i].shape : Shape::Round;
-    hw = hh * (s == Shape::Tab ? kTabAspect : s == Shape::Pill ? kPillAspect : 1.0f);
+    hw = hh * (s == Shape::Tab ? kTabAspect : s == Shape::Pill ? kPillAspect : s == Shape::Pedal ? kPedalAspect : 1.0f);
 }
 
-// the editor's bar at the top: Reset, smaller and bigger for the picked control, hide or show it, Cancel, Done, in
-// screen shares
-constexpr const char* kBarLabels[] = {"RESET", "-", "+", "HIDE", "CANCEL", "DONE"};
+// floating editor toolbar at the top: Reset, -, +, Hide/Show, Cancel, Save
+constexpr const char* kBarLabels[] = {"RESET", "-", "+", "HIDE", "CANCEL", "SAVE"};
 enum { kBarReset, kBarSmaller, kBarBigger, kBarHide, kBarCancel, kBarDone, kBarCount };
-constexpr float kBarY = 0.17f, kBarH = 0.09f, kBarW = 0.13f, kBarGap = 0.02f;
-constexpr float kBarSizeW = 0.07f;                       // the - and + buttons
+constexpr float kBarY = 0.055f, kBarH = 0.088f, kBarW = 0.115f, kBarGap = 0.014f;
+constexpr float kBarSizeW = 0.062f;                      // the - and + buttons
 constexpr float kMinRadius = 0.02f, kMaxRadius = 0.25f;  // a control's own radius, in screen heights
 constexpr float kSizeStep = 1.1f;                        // a tap on - or +
 
@@ -1407,21 +1378,19 @@ struct Pen {
 
 void DrawIcon(const Pen& p, Icon icon) {
     switch (icon) {
-        case Icon::Text:  // its label, Draw writes it
+        case Icon::Text:
             break;
         case Icon::Pause:
-            p.Box(-0.28f, -0.36f, -0.08f, 0.36f, 0.03f);
-            p.Box(0.08f, -0.36f, 0.28f, 0.36f, 0.03f);
+            p.Box(-0.28f, -0.36f, -0.08f, 0.36f, 0.06f);
+            p.Box(0.08f, -0.36f, 0.28f, 0.36f, 0.06f);
             break;
-        case Icon::Gear:
-            for (int i = 0; i < 8; i++) {
-                float a = i * kPi / 4;
-                p.dl->AddLine(p.R(0.3f, 0, a), p.R(0.52f, 0, a), p.col, p.th * 2.4f);
-            }
-            p.Dot(0, 0, 0.36f);
-            p.dl->AddCircleFilled(p.c, 0.15f * p.r, IM_COL32(0, 0, 0, 200), 20);
+        case Icon::Menu:
+            // modern 3-bar menu icon with rounded caps
+            p.Box(-0.42f, -0.34f, 0.42f, -0.18f, 0.08f);
+            p.Box(-0.42f, -0.08f, 0.42f, 0.08f, 0.08f);
+            p.Box(-0.42f, 0.18f, 0.22f, 0.34f, 0.08f);
             break;
-        case Icon::Gyro: {  // a phone on its side between two turning arrows
+        case Icon::Gyro: {
             p.dl->AddRect(p.P(-0.32f, -0.2f), p.P(0.32f, 0.2f), p.col, 0.06f * p.r, 0, p.th);
             p.Dot(0.24f, 0, 0.035f);
             for (float side : {-1.0f, 1.0f}) {
@@ -1437,24 +1406,20 @@ void DrawIcon(const Pen& p, Icon icon) {
         }
         case Icon::Back:
         case Icon::Left:
-            p.Line(0.14f, -0.36f, -0.22f, 0);
-            p.Line(-0.22f, 0, 0.14f, 0.36f);
+            p.dl->AddTriangleFilled(p.P(-0.34f, 0.0f), p.P(0.24f, -0.32f), p.P(0.24f, 0.32f), p.col);
             break;
         case Icon::Right:
-            p.Line(-0.14f, -0.36f, 0.22f, 0);
-            p.Line(0.22f, 0, -0.14f, 0.36f);
+            p.dl->AddTriangleFilled(p.P(0.34f, 0.0f), p.P(-0.24f, -0.32f), p.P(-0.24f, 0.32f), p.col);
             break;
         case Icon::Up:
-            p.Line(-0.36f, 0.14f, 0, -0.22f);
-            p.Line(0, -0.22f, 0.36f, 0.14f);
+            p.dl->AddTriangleFilled(p.P(0.0f, -0.34f), p.P(0.32f, 0.24f), p.P(-0.32f, 0.24f), p.col);
             break;
         case Icon::Down:
-            p.Line(-0.36f, -0.14f, 0, 0.22f);
-            p.Line(0, 0.22f, 0.36f, -0.14f);
+            p.dl->AddTriangleFilled(p.P(0.0f, 0.34f), p.P(0.32f, -0.24f), p.P(-0.32f, -0.24f), p.col);
             break;
-        case Icon::Camera:  // a camera's body, its lens and the bump of its viewfinder
-            p.dl->AddRect(p.P(-0.44f, -0.24f), p.P(0.44f, 0.32f), p.col, 0.08f * p.r, 0, p.th);
-            p.Box(-0.18f, -0.36f, 0.12f, -0.24f, 0.03f);
+        case Icon::Camera:
+            p.dl->AddRect(p.P(-0.44f, -0.24f), p.P(0.44f, 0.32f), p.col, 0.10f * p.r, 0, p.th);
+            p.Box(-0.18f, -0.36f, 0.12f, -0.24f, 0.04f);
             p.Ring(0, 0.04f, 0.17f);
             p.Dot(0.3f, -0.13f, 0.04f);
             break;
@@ -1464,12 +1429,12 @@ void DrawIcon(const Pen& p, Icon icon) {
 // a colour at the layout's opacity
 ImU32 Fade(int r, int g, int b, int a) { return IM_COL32(r, g, b, int(float(a) * g_opacity)); }
 
-// the controls' look: dark glass edged in warm parchment, saffron when pressed, the face buttons rimmed in their colour
+// Road Rage touch visual palette: frosted midnight slate, silver rims, taxi yellow press highlight
 struct Rgb {
     int r, g, b;
 };
-constexpr Rgb kGlass = {28, 22, 16}, kEdge = {235, 205, 150}, kSaffron = {224, 138, 44}, kJade = {62, 158, 124},
-              kCream = {240, 228, 205};
+constexpr Rgb kSlate = {15, 22, 34}, kRim = {215, 226, 245}, kTaxi = {255, 212, 40}, kCyan = {92, 202, 228},
+              kInk = {238, 244, 255}, kGasGreen = {58, 214, 118}, kBrakeRed = {242, 76, 86}, kSkyBlue = {68, 166, 255};
 ImU32 Fade(Rgb c, int a) { return Fade(c.r, c.g, c.b, a); }
 
 bool Ps2() { return game::Opt().ps2_buttons; }
@@ -1491,33 +1456,29 @@ void DrawPs2Symbol(ImDrawList* dl, ImVec2 c, float r, int face, ImU32 col, float
     }
 }
 
-// a control's name in the style shown
 const char* Label(const Button& b) { return Ps2() && b.ps2 ? b.ps2 : b.label; }
 
-// the Xbox controller's colour of a button: A green, B red, X blue, Y yellow, the triggers saffron, Black and White
-// jade, the rest the edge's; the PS2's face buttons in theirs
 Rgb ButtonColour(int press) {
     if (Ps2() && press >= kAnalogA && press <= kAnalogY) return kPs2Colours[press];
     switch (press) {
-        case kAnalogA: return {95, 196, 110};
-        case kAnalogB: return {224, 86, 76};
-        case kAnalogX: return {111, 159, 224};
-        case kAnalogY: return {232, 190, 72};
-        case kAnalogLT:
-        case kAnalogRT: return kSaffron;
+        case kAnalogA: return kGasGreen;
+        case kAnalogB: return kBrakeRed;
+        case kAnalogX: return kSkyBlue;
+        case kAnalogY: return kTaxi;
+        case kAnalogRT: return kGasGreen;
+        case kAnalogLT: return kBrakeRed;
         case 4:
-        case 5: return kJade;
-        default: return kEdge;
+        case 5: return kCyan;
+        case kPanel: return kTaxi;
+        default: return kRim;
     }
 }
 
 void DrawStick(ImDrawList* dl, float th, size_t stick) {
-    // a hidden right stick: faint and crossed out in the editor, else not drawn
     bool hidden = g_layout[stick].hidden;
     if (hidden && !g_editing) return;
     float opacity = g_opacity;
     if (hidden) g_opacity *= 0.4f;
-    // at rest in its place, else where the thumb came down
     float r = Radius(stick);
     ImVec2 at(g_layout[stick].x * Width(), g_layout[stick].y * Height());
     Role role = stick == kStick ? Role::Stick : Role::Look;
@@ -1528,123 +1489,171 @@ void DrawStick(ImDrawList* dl, float th, size_t stick) {
             at = ImVec2(f.x0, f.y0);
             held = true;
         }
-    dl->AddCircleFilled(at, r, Fade(kGlass, held ? 165 : 120), 64);
-    dl->AddCircle(at, r, Fade(kEdge, held ? 110 : 70), 64, th * 0.7f);
-    dl->AddCircle(at, r * 0.7f, Fade(kEdge, 30), 64, th * 0.5f);
-    for (int i = 0; i < 4; i++) {  // the four directions
-        float a = i * kPi / 2;
-        ImVec2 tip(at.x + std::cos(a) * r * 0.88f, at.y + std::sin(a) * r * 0.88f);
-        ImVec2 l(at.x + std::cos(a + 0.12f) * r * 0.76f, at.y + std::sin(a + 0.12f) * r * 0.76f);
-        ImVec2 rr(at.x + std::cos(a - 0.12f) * r * 0.76f, at.y + std::sin(a - 0.12f) * r * 0.76f);
-        dl->AddTriangleFilled(tip, l, rr, Fade(kEdge, held ? 150 : 95));
+    // outer frosted steering base
+    dl->AddCircleFilled(at, r, Fade(kSlate, held ? 175 : 125), 64);
+    dl->AddCircle(at, r, Fade(held ? kTaxi : kRim, held ? 165 : 80), 64, th * 0.9f);
+    // segmented directional arcs instead of triangles
+    for (int i = 0; i < 4; i++) {
+        float mid = i * kPi / 2;
+        dl->PathArcTo(at, r * 0.84f, mid - 0.24f, mid + 0.24f, 8);
+        dl->PathStroke(Fade(held ? kTaxi : kRim, held ? 185 : 95), 0, th * 1.15f);
     }
+    // subtle center crosshair
+    float ch = r * 0.18f;
+    dl->AddLine(ImVec2(at.x - ch, at.y), ImVec2(at.x + ch, at.y), Fade(kRim, 45), th * 0.55f);
+    dl->AddLine(ImVec2(at.x, at.y - ch), ImVec2(at.x, at.y + ch), Fade(kRim, 45), th * 0.55f);
+
     ImVec2 knob(at.x + sx * r, at.y - sy * r);
-    dl->AddCircleFilled(knob, r * 0.42f, held ? Fade(kSaffron, 150) : Fade(60, 48, 36, 170), 48);
-    dl->AddCircle(knob, r * 0.42f, Fade(kEdge, held ? 200 : 120), 48, th * 0.8f);
+    if (held && (std::fabs(sx) > 0.05f || std::fabs(sy) > 0.05f)) {
+        dl->AddLine(at, knob, Fade(kTaxi, 130), th * 1.4f);
+    }
+    // dual-ring concave thumb cap
+    dl->AddCircleFilled(knob, r * 0.40f, held ? Fade(kTaxi, 175) : Fade(32, 44, 66, 190), 48);
+    dl->AddCircle(knob, r * 0.40f, Fade(held ? kInk : kRim, held ? 235 : 140), 48, th * 1.0f);
+    dl->AddCircle(knob, r * 0.24f, Fade(held ? kSlate : kRim, held ? 140 : 65), 32, th * 0.6f);
     g_opacity = opacity;
     if (hidden) {
         float k = r * 0.35f;
-        dl->AddLine(ImVec2(at.x - k, at.y - k), ImVec2(at.x + k, at.y + k), IM_COL32(255, 80, 60, 220), th);
-        dl->AddLine(ImVec2(at.x - k, at.y + k), ImVec2(at.x + k, at.y - k), IM_COL32(255, 80, 60, 220), th);
+        dl->AddLine(ImVec2(at.x - k, at.y - k), ImVec2(at.x + k, at.y + k), IM_COL32(242, 76, 86, 225), th);
+        dl->AddLine(ImVec2(at.x - k, at.y + k), ImVec2(at.x + k, at.y - k), IM_COL32(242, 76, 86, 225), th);
     }
 }
 
-// a text centred on a point, its height a share of the screen's
 void CentredText(ImDrawList* dl, ImVec2 at, float size, ImU32 colour, const char* text) {
     ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, text);
     dl->AddText(ImGui::GetFont(), size, ImVec2(at.x - ts.x / 2, at.y - ts.y / 2), colour, text);
 }
 
-// a control in its shape: glass, its edge, its icon or label, a face button's caption under it. fade is the share
-// (of 100) a hidden control shows at in the editor
 void DrawControl(ImDrawList* dl, size_t i, bool on, int fade, float th) {
     const Button& b = kButtons[i];
     float cx, cy, hw, hh;
     Centre(i, cx, cy);
     Extent(i, hw, hh);
-    if (on) hw *= 0.9f, hh *= 0.9f;  // pressed in
+    if (on) hw *= 0.92f, hh *= 0.92f;
     ImVec2 c(cx, cy);
     Rgb colour = ButtonColour(b.press);
-    ImU32 fill = on ? Fade(kSaffron, 120) : Fade(kGlass, 155 * fade / 100);
+    ImU32 fill = on ? Fade(colour, 145) : Fade(kSlate, 165 * fade / 100);
+    bool face = b.press >= kAnalogA && b.press <= kAnalogY;
+
     switch (b.shape) {
         case Shape::Round: {
-            bool face = b.caption != nullptr;
-            dl->AddCircleFilled(c, hh, on && face ? Fade(colour, 110) : fill, 48);
-            dl->AddCircle(c, hh, face ? Fade(colour, 200 * fade / 100) : Fade(kEdge, 70 * fade / 100), 48,
-                          th * (face ? 1.1f : 0.7f));
-            if (face) dl->AddCircle(c, hh * 0.82f, Fade(kEdge, 28 * fade / 100), 48, th * 0.5f);
+            if (on) dl->AddCircleFilled(c, hh * 1.14f, Fade(colour, 55), 48);
+            dl->AddCircleFilled(c, hh, fill, 48);
+            dl->AddCircle(c, hh, face ? Fade(colour, 215 * fade / 100) : Fade(kRim, 95 * fade / 100), 48,
+                          th * (face ? 1.25f : 0.85f));
+            break;
+        }
+        case Shape::Pedal: {
+            float round = hh * 0.34f;
+            ImVec2 p0(cx - hw, cy - hh), p1(cx + hw, cy + hh);
+            if (on) dl->AddRectFilled(ImVec2(p0.x - th * 1.5f, p0.y - th * 1.5f),
+                                      ImVec2(p1.x + th * 1.5f, p1.y + th * 1.5f), Fade(colour, 55), round + th);
+            dl->AddRectFilled(p0, p1, fill, round);
+            dl->AddRect(p0, p1, Fade(colour, (on ? 250 : 190) * fade / 100), round, 0, th * 1.15f);
+            // top glowing pedal accent strip
+            dl->AddRectFilled(ImVec2(cx - hw * 0.56f, p0.y + hh * 0.16f),
+                              ImVec2(cx + hw * 0.56f, p0.y + hh * 0.16f + th * 1.6f),
+                              Fade(colour, 230 * fade / 100), th);
+            // subtle pedal grip ridges
+            for (int g = 0; g < 2; g++) {
+                float gy = cy + hh * (0.04f + float(g) * 0.22f);
+                dl->AddLine(ImVec2(cx - hw * 0.44f, gy), ImVec2(cx + hw * 0.44f, gy),
+                            Fade(kRim, 32 * fade / 100), th * 0.7f);
+            }
             break;
         }
         case Shape::Tab:
         case Shape::Pill: {
-            float round = b.shape == Shape::Pill ? hh : hh * 0.45f;
+            float round = b.shape == Shape::Pill ? hh : hh * 0.42f;
             ImVec2 p0(cx - hw, cy - hh), p1(cx + hw, cy + hh);
             dl->AddRectFilled(p0, p1, fill, round);
-            dl->AddRect(p0, p1, Fade(kEdge, 70 * fade / 100), round, 0, th * 0.7f);
-            if (b.shape == Shape::Tab)  // the trigger's or the button's colour along its foot
-                dl->AddRectFilled(ImVec2(cx - hw * 0.55f, cy + hh * 0.62f), ImVec2(cx + hw * 0.55f, cy + hh * 0.62f + th * 1.3f),
-                                  Fade(colour, 210 * fade / 100), th);
+            dl->AddRect(p0, p1, Fade(b.press == 4 || b.press == 5 ? colour : kRim, 110 * fade / 100), round, 0,
+                        th * 0.85f);
             break;
         }
         case Shape::Square: {
-            float round = hh * 0.3f;
-            dl->AddRectFilled(ImVec2(cx - hw, cy - hh), ImVec2(cx + hw, cy + hh), fill, round);
-            dl->AddRect(ImVec2(cx - hw, cy - hh), ImVec2(cx + hw, cy + hh), Fade(kEdge, 60 * fade / 100), round, 0,
-                        th * 0.6f);
+            float round = hh * 0.36f;
+            ImVec2 p0(cx - hw, cy - hh), p1(cx + hw, cy + hh);
+            dl->AddRectFilled(p0, p1, fill, round);
+            dl->AddRect(p0, p1, Fade(b.press == kPanel ? kTaxi : kRim, (b.press == kPanel ? 195 : 85) * fade / 100),
+                        round, 0, th * (b.press == kPanel ? 1.1f : 0.75f));
             break;
         }
     }
-    float icon = b.shape == Shape::Square ? hh * 0.85f : hh;
-    DrawIcon({dl, c, icon, on ? Fade(255, 255, 255, 240) : Fade(kCream, 200 * fade / 100), th}, b.icon);
-    if (Ps2() && !b.rt && b.press >= kAnalogA && b.press <= kAnalogY) {
-        DrawPs2Symbol(dl, c, hh, b.press, on ? Fade(255, 255, 255, 255) : Fade(colour, 235 * fade / 100), th * 1.6f);
+
+    float icon = b.shape == Shape::Square ? hh * 0.80f : hh * 0.92f;
+    ImU32 icon_col = on ? Fade(255, 255, 255, 250) : Fade(b.press == kPanel ? kTaxi : kInk, 220 * fade / 100);
+    DrawIcon({dl, c, icon, icon_col, th}, b.icon);
+
+    if (Ps2() && !b.rt && face) {
+        DrawPs2Symbol(dl, c, hh, b.press, on ? Fade(255, 255, 255, 255) : Fade(colour, 240 * fade / 100), th * 1.6f);
     } else if (b.icon == Icon::Text) {
-        ImU32 text = on ? Fade(255, 255, 255, 255) : b.shape == Shape::Round ? Fade(colour, 235 * fade / 100)
-                                                                             : Fade(kCream, 225 * fade / 100);
-        float size = b.shape == Shape::Round ? hh * 1.05f : b.shape == Shape::Pill ? hh * 0.78f : hh * 0.8f;
-        CentredText(dl, ImVec2(cx, cy - (b.shape == Shape::Tab ? hh * 0.08f : 0)), size, text, Label(b));
-    }
-    if (b.caption) {  // its move under it, in a dark band to read over the game
-        float size = Radius(i) * 0.42f;
-        ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(size, FLT_MAX, 0, b.caption);
-        ImVec2 at(cx, cy + Radius(i) + size * 0.75f);
-        dl->AddRectFilled(ImVec2(at.x - ts.x / 2 - size * 0.35f, at.y - ts.y / 2 - size * 0.05f),
-                          ImVec2(at.x + ts.x / 2 + size * 0.35f, at.y + ts.y / 2 + size * 0.05f), Fade(kGlass, 130 * fade / 100),
-                          size * 0.3f);
-        CentredText(dl, at, size, Fade(kCream, 215 * fade / 100), b.caption);
+        ImU32 text = on ? Fade(255, 255, 255, 255) : face ? Fade(colour, 245 * fade / 100) : Fade(kInk, 235 * fade / 100);
+        if (b.shape == Shape::Pedal && b.caption) {
+            CentredText(dl, ImVec2(cx, cy - hh * 0.22f), hh * 0.72f, text, Label(b));
+            CentredText(dl, ImVec2(cx, cy + hh * 0.44f), hh * 0.40f,
+                        on ? Fade(255, 255, 255, 245) : Fade(colour, 230 * fade / 100), b.caption);
+        } else {
+            float size = b.shape == Shape::Round ? hh * 1.02f : b.shape == Shape::Pill ? hh * 0.80f : hh * 0.78f;
+            CentredText(dl, c, size, text, Label(b));
+        }
     }
 }
 
-// the editor's mark around a control
 void DrawOutline(ImDrawList* dl, size_t i, ImU32 colour, float th) {
     float cx, cy, hw, hh;
     Centre(i, cx, cy);
     Extent(i, hw, hh);
-    float k = th * 2;
-    if (kButtons[i].shape == Shape::Round) dl->AddCircle(ImVec2(cx, cy), hh + k, colour, 48, th * 1.5f);
-    else dl->AddRect(ImVec2(cx - hw - k, cy - hh - k), ImVec2(cx + hw + k, cy + hh + k), colour, hh * 0.4f, 0, th * 1.5f);
+    float k = th * 2.2f;
+    if (kButtons[i].shape == Shape::Round) dl->AddCircle(ImVec2(cx, cy), hh + k, colour, 48, th * 1.6f);
+    else dl->AddRect(ImVec2(cx - hw - k, cy - hh - k), ImVec2(cx + hw + k, cy + hh + k), colour, hh * 0.38f, 0, th * 1.6f);
 }
 
-// the editor's bar, drawn as the controls are: Reset, Cancel, Done, and what to do under it
+// floating frosted dock toolbar for the layout editor
 void DrawEditorBar(ImDrawList* dl, float th) {
-    float h = Height();
+    float w = Width(), h = Height();
+    float first[4], last[4];
+    BarAt(0, 0, first, 0);
+    BarAt(0, 0, last, kBarCount - 1);
+    float pad_x = w * 0.014f, pad_y = h * 0.016f;
+    dl->AddRectFilled(ImVec2(first[0] - pad_x, first[1] - pad_y), ImVec2(last[2] + pad_x, last[3] + pad_y),
+                      IM_COL32(12, 17, 27, 235), h * 0.024f);
+    dl->AddRect(ImVec2(first[0] - pad_x, first[1] - pad_y), ImVec2(last[2] + pad_x, last[3] + pad_y),
+                IM_COL32(255, 212, 40, 165), h * 0.024f, 0, th * 0.85f);
+
     for (int i = 0; i < kBarCount; i++) {
         float r[4];
         BarAt(0, 0, r, i);
         bool done = i == kBarDone;
         bool size = i == kBarSmaller || i == kBarBigger;
-        // - and + wait for a control to be picked, Hide for one that can be hidden
-        int alpha = (size && g_selected < 0) || (i == kBarHide && !Hideable(g_selected)) ? 90 : 240;
+        int alpha = (size && g_selected < 0) || (i == kBarHide && !Hideable(g_selected)) ? 85 : 245;
         const char* label = i == kBarHide && Hideable(g_selected) && g_layout[size_t(g_selected)].hidden ? "SHOW"
                                                                                                          : kBarLabels[i];
-        dl->AddRectFilled(ImVec2(r[0], r[1]), ImVec2(r[2], r[3]),
-                          done ? IM_COL32(150, 115, 45, 235) : IM_COL32(20, 18, 14, 225), h * 0.015f);
-        dl->AddRect(ImVec2(r[0], r[1]), ImVec2(r[2], r[3]), IM_COL32(220, 180, 100, alpha), h * 0.015f, 0, th * 0.7f);
-        CentredText(dl, ImVec2((r[0] + r[2]) / 2, (r[1] + r[3]) / 2), h * (size ? 0.06f : 0.042f),
-                    IM_COL32(255, 255, 255, alpha), app::Ui(label).c_str());
+        ImU32 bg = done ? IM_COL32(255, 212, 40, 245) : IM_COL32(26, 35, 52, 235);
+        ImU32 border = done ? IM_COL32(255, 232, 110, 255) : IM_COL32(105, 130, 170, alpha);
+        ImU32 fg = done ? IM_COL32(16, 20, 30, 255) : IM_COL32(240, 246, 255, alpha);
+        dl->AddRectFilled(ImVec2(r[0], r[1]), ImVec2(r[2], r[3]), bg, h * 0.016f);
+        dl->AddRect(ImVec2(r[0], r[1]), ImVec2(r[2], r[3]), border, h * 0.016f, 0, th * 0.65f);
+        CentredText(dl, ImVec2((r[0] + r[2]) / 2, (r[1] + r[3]) / 2), h * (size ? 0.056f : 0.038f), fg,
+                    app::Ui(label).c_str());
     }
-    CentredText(dl, ImVec2(Width() / 2, (kBarY + kBarH + 0.05f) * h), h * 0.036f, IM_COL32(255, 255, 255, 220),
-                app::Ui("DRAG TO MOVE, PINCH OR - + TO RESIZE").c_str());
+
+    std::string hint;
+    if (g_selected >= 0) {
+        const char* name = size_t(g_selected) == kStick    ? "LEFT STICK"
+                           : size_t(g_selected) == kRStick ? "RIGHT STICK"
+                                                           : Label(kButtons[size_t(g_selected)]);
+        hint = std::string(name) + "  |  " + app::Ui("DRAG TO MOVE, PINCH OR - + TO RESIZE");
+    } else {
+        hint = app::Ui("DRAG TO MOVE, PINCH OR - + TO RESIZE");
+    }
+    float hint_y = (kBarY + kBarH + 0.052f) * h;
+    float hint_sz = h * 0.032f;
+    ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(hint_sz, FLT_MAX, 0, hint.c_str());
+    dl->AddRectFilled(ImVec2(w / 2 - ts.x / 2 - hint_sz * 0.7f, hint_y - ts.y / 2 - hint_sz * 0.25f),
+                      ImVec2(w / 2 + ts.x / 2 + hint_sz * 0.7f, hint_y + ts.y / 2 + hint_sz * 0.25f),
+                      IM_COL32(12, 17, 27, 200), hint_sz * 0.5f);
+    CentredText(dl, ImVec2(w / 2, hint_y), hint_sz, IM_COL32(255, 212, 40, 240), hint.c_str());
 }
 
 // With the PS2's buttons, the game's prompts too: each Xbox icon it drew last frame (src/game/prompts.cpp) covered by
@@ -1702,7 +1711,7 @@ void Draw() {
     DrawGameIcons(th);
     if (!editing && !Shown()) return;
     ImDrawList* dl = ImGui::GetForegroundDrawList();
-    if (editing) dl->AddRectFilled(ImVec2(0, 0), ImVec2(Width(), h), IM_COL32(0, 0, 0, 90));
+    if (editing) dl->AddRectFilled(ImVec2(0, 0), ImVec2(Width(), h), IM_COL32(6, 10, 18, 150));
     for (size_t i = 0; i < kButtonCount; i++) {
         const Button& b = kButtons[i];
         if (!ButtonShown(i) || (app::MenuOpen() && b.press != kPanel && !editing)) continue;
@@ -1719,11 +1728,11 @@ void Draw() {
             ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(fs, FLT_MAX, 0, mode);
             dl->AddText(ImGui::GetFont(), fs, ImVec2(cx - ts.x / 2, cy + r * 1.08f), Fade(255, 255, 255, 180), mode);
         }
-        if (editing && int(i) == g_selected) DrawOutline(dl, i, IM_COL32(255, 200, 60, 255), th);
+        if (editing && int(i) == g_selected) DrawOutline(dl, i, IM_COL32(255, 212, 40, 255), th);
         if (editing && hidden) {
             float k = r * 0.6f;
-            dl->AddLine(ImVec2(cx - k, cy - k), ImVec2(cx + k, cy + k), IM_COL32(255, 80, 60, 220), th);
-            dl->AddLine(ImVec2(cx - k, cy + k), ImVec2(cx + k, cy - k), IM_COL32(255, 80, 60, 220), th);
+            dl->AddLine(ImVec2(cx - k, cy - k), ImVec2(cx + k, cy + k), IM_COL32(242, 76, 86, 225), th);
+            dl->AddLine(ImVec2(cx - k, cy + k), ImVec2(cx + k, cy - k), IM_COL32(242, 76, 86, 225), th);
         }
     }
     if (editing || (!InMenus() && !GameMenu() && !app::MenuOpen() && input::Play()))
@@ -1732,7 +1741,7 @@ void Draw() {
         if (g_selected >= 0 && IsStick(size_t(g_selected))) {
             size_t s = size_t(g_selected);
             ImVec2 at(g_layout[s].x * Width(), g_layout[s].y * h);
-            dl->AddCircle(at, Radius(s) + th * 2, IM_COL32(255, 200, 60, 255), 64, th * 1.5f);
+            dl->AddCircle(at, Radius(s) + th * 2, IM_COL32(255, 212, 40, 255), 64, th * 1.6f);
         }
         DrawEditorBar(dl, th);
     }
